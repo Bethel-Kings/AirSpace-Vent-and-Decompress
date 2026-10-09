@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     PORT: int = 8000
     
     # Security & Authentication
-    SECRET_KEY: str = "airspace-default-dev-secret-key-change-in-production-pitch"
+    SECRET_KEY: str = eb8a8b6c7b0110b325ecdb262c98e6ce0f46f0fcd739ea55a78ac6f4b7d0c1d6
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
     ALGORITHM: str = "HS256"
     
@@ -31,7 +31,7 @@ class Settings(BaseSettings):
 
     # AI Provider Configuration (Decompress & Reframe)
     AI_PROVIDER: str = "gemini"  # "gemini", "mock" (for tests / fallback)
-    AI_PROVIDER_API_KEY: str = ""
+    AI_PROVIDER_API_KEY: str = "AQ.Ab8RN6JTDeFnB-0Joc--2YdjCW1lSoBzzjL14l0ObwtbIedwnQ"
     AI_MODEL_NAME: str = "gemini-2.5-flash"
     AI_PROMPT_VERSION: str = "v1.0"
     
