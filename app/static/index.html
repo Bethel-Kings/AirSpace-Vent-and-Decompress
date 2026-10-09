@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AirSpace — Vent, Decompress & Regain Clarity</title>
+  <meta name="description" content="AI-powered emotional decompression platform that helps users safely vent, process emotions, and regain mental clarity through private, guided reflection.">
+
+  <!-- Google Fonts: Outfit & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+  <!-- Application Header -->
+  <header class="app-header">
+    <div class="brand" onclick="showView('dashboard')">
+      <div class="brand-icon">🌬️</div>
+      <span>AirSpace</span>
+    </div>
+
+    <!-- Navigation Bar -->
+    <nav>
+      <!-- Authenticated User Nav -->
+      <div id="auth-nav" class="nav-links" style="display: none;">
+        <button class="nav-btn" data-view="dashboard" onclick="showView('dashboard')">Dashboard</button>
+        <button class="nav-btn" data-view="history" onclick="showView('history')">History</button>
+        <button class="nav-btn" data-view="settings" onclick="showView('settings')">Settings</button>
+        <span id="nav-user-email" style="font-size: 0.85rem; color: var(--text-muted); margin-left: 0.5rem;"></span>
+        <button class="btn btn-sm btn-secondary" onclick="logout()">Sign Out</button>
+      </div>
+
+      <!-- Guest Nav -->
+      <div id="guest-nav" class="nav-links">
+        <button class="nav-btn" data-view="landing" onclick="showView('landing')">About</button>
+        <button class="nav-btn" onclick="showView('login')">Sign In</button>
+        <button class="btn btn-sm btn-primary" onclick="showView('register')">Get Started</button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Global Alert Container -->
+  <div class="container" style="padding-top: 1rem; padding-bottom: 0;">
+    <div id="global-alert" class="alert" style="display: none;"></div>
+  </div>
+
+  <main class="container">
+
+    <!-- =========================================================================
+         1. VIEW: LANDING PAGE (FR-001, FR-002, FR-003)
+         ========================================================================= -->
+    <section id="view-landing" class="view-container">
+      <div style="text-align: center; max-width: 760px; margin: 2rem auto 4rem auto;">
+        <div class="ai-badge" style="margin-bottom: 1.5rem;">Private Expression & Structured Reset</div>
+        <h1 style="font-size: clamp(2.5rem, 5vw, 3.8rem); line-height: 1.15; margin-bottom: 1.5rem;">
+          Life gets heavy.<br>
+          <span class="gradient-text">Let it all out.</span>
+        </h1>
+        <p style="font-size: 1.2rem; color: var(--text-secondary); margin-bottom: 2.5rem; line-height: 1.7;">
+          AirSpace is your private sanctuary to vent stream-of-consciousness thoughts without judgement, untangle overwhelming stress with AI-assisted decompression, and leave with grounded mental clarity.
+        </p>
+        <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+          <button class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2.2rem;" onclick="showView('register')">
+            Start Free Decompression →
+          </button>
+          <button class="btn btn-secondary" style="font-size: 1.1rem; padding: 1rem 1.8rem;" onclick="showView('login')">
+            I Have an Account
+          </button>
+        </div>
+      </div>
+
+      <!-- Feature Highlight Grid -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 3rem;">
+        <div class="card" style="padding: 2rem;">
+          <div style="font-size: 2.2rem; margin-bottom: 1rem;">✍️</div>
+          <h3 style="margin-bottom: 0.5rem;">Air It Out</h3>
+          <p style="color: var(--text-secondary); font-size: 0.95rem;">
+            A completely distraction-free canvas to vent unfiltered thoughts, work frustrations, or emotional clutter in private.
+          </p>
+        </div>
+
+        <div class="card" style="padding: 2rem;">
+          <div style="font-size: 2.2rem; margin-bottom: 1rem;">🌿</div>
+          <h3 style="margin-bottom: 0.5rem;">Decompress & Reframe</h3>
+          <p style="color: var(--text-secondary); font-size: 0.95rem;">
+            Transform chaos into structured clarity. Gentle AI reflection untangles the root stressors and offers constructive next steps.
+          </p>
+        </div>
+
+        <div class="card" style="padding: 2rem;">
+          <div style="font-size: 2.2rem; margin-bottom: 1rem;">📊</div>
+          <h3 style="margin-bottom: 0.5rem;">Track Your Reset</h3>
+          <p style="color: var(--text-secondary); font-size: 0.95rem;">
+            Measure the emotional shift. Quick check-ins before and after your session visualize how decompression restores calm.
+          </p>
+        </div>
+      </div>
+
+      <!-- Pitch Disclaimer -->
+      <div style="margin-top: 4rem; padding: 1.25rem; border-radius: var(--radius-md); background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-subtle); text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+        ⚖️ <strong>Safety Disclaimer:</strong> AirSpace is an emotional wellness and reflection tool. It is not a clinical therapy service, medical diagnostic tool, or crisis hotline.
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         2. VIEW: REGISTER (FR-010, FR-013)
+         ========================================================================= -->
+    <section id="view-register" class="view-container" style="display: none;">
+      <div class="card" style="max-width: 460px; margin: 3rem auto;">
+        <h2 style="margin-bottom: 0.5rem; text-align: center;">Create Your Space</h2>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; text-align: center; margin-bottom: 2rem;">
+          Your private, judgment-free decompression account
+        </p>
+
+        <div id="register-alert" class="alert" style="display: none;"></div>
+
+        <form onsubmit="event.preventDefault(); registerUser(document.getElementById('reg-email').value, document.getElementById('reg-password').value);">
+          <div class="form-group">
+            <label class="form-label" for="reg-email">Email Address</label>
+            <input type="email" id="reg-email" class="form-input" required placeholder="you@example.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="reg-password">Password (minimum 8 characters)</label>
+            <input type="password" id="reg-password" class="form-input" required minlength="8" placeholder="••••••••">
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Create Account</button>
+        </form>
+
+        <p style="color: var(--text-muted); text-align: center; font-size: 0.85rem; margin-top: 1.5rem;">
+          Already have an account? <a href="#" style="color: var(--accent-cyan);" onclick="showView('login')">Sign in here</a>
+        </p>
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         3. VIEW: LOGIN (FR-011)
+         ========================================================================= -->
+    <section id="view-login" class="view-container" style="display: none;">
+      <div class="card" style="max-width: 460px; margin: 3rem auto;">
+        <h2 style="margin-bottom: 0.5rem; text-align: center;">Welcome Back</h2>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; text-align: center; margin-bottom: 2rem;">
+          Sign in to access your private reflection journal
+        </p>
+
+        <div id="login-alert" class="alert" style="display: none;"></div>
+
+        <form onsubmit="event.preventDefault(); loginUser(document.getElementById('login-email').value, document.getElementById('login-password').value);">
+          <div class="form-group">
+            <label class="form-label" for="login-email">Email Address</label>
+            <input type="email" id="login-email" class="form-input" required placeholder="you@example.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="login-password">Password</label>
+            <input type="password" id="login-password" class="form-input" required placeholder="••••••••">
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Sign In</button>
+        </form>
+
+        <p style="color: var(--text-muted); text-align: center; font-size: 0.85rem; margin-top: 1.5rem;">
+          Don't have an account? <a href="#" style="color: var(--accent-cyan);" onclick="showView('register')">Create one now</a>
+        </p>
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         4. VIEW: DASHBOARD (Section 10)
+         ========================================================================= -->
+    <section id="view-dashboard" class="view-container" style="display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h1 style="font-size: 2.2rem; margin-bottom: 0.35rem;">Emotional Clarity Dashboard</h1>
+          <p style="color: var(--text-secondary);">Take a breath. What would you like to release today?</p>
+        </div>
+        <button class="btn btn-primary" onclick="startNewSessionFlow()" style="font-size: 1rem;">
+          🌬️ Start New Session
+        </button>
+      </div>
+
+      <div id="dash-alert" class="alert" style="display: none;"></div>
+
+      <!-- Quick Metrics Banner -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.25rem; margin-bottom: 2.5rem;">
+        <div class="card" style="padding: 1.5rem;">
+          <div style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; font-weight: 700;">Saved Sessions</div>
+          <div id="stat-total-sessions" style="font-size: 2.5rem; font-weight: 800; color: #fff; margin-top: 0.25rem;">0</div>
+        </div>
+        <div class="card" style="padding: 1.5rem;">
+          <div style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; font-weight: 700;">Privacy Status</div>
+          <div style="font-size: 1.3rem; font-weight: 700; color: var(--accent-emerald); margin-top: 0.5rem;">🔒 Encrypted & Isolated</div>
+        </div>
+      </div>
+
+      <!-- Recent Activity Section -->
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <h3>Recent Sessions</h3>
+          <button class="btn btn-sm btn-secondary" onclick="showView('history')">View All History →</button>
+        </div>
+        <div id="dashboard-recent-list">
+          <p style="color: var(--text-muted); text-align: center; padding: 2rem 0;">Loading recent activity...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         5. VIEW: TRACK YOUR RESET (PRE-SESSION CHECK-IN) (FR-040)
+         ========================================================================= -->
+    <section id="view-pre-checkin" class="view-container" style="display: none;">
+      <div class="card" style="max-width: 640px; margin: 2rem auto;">
+        <div class="ai-badge">Step 1 of 3 · Reset Check-In</div>
+        <h2 style="font-size: 1.8rem; margin-bottom: 0.75rem;">How are you feeling right now?</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+          Checking in before you vent grounds you in the moment and allows us to track your reset delta afterwards.
+        </p>
+
+        <div id="pre-checkin-alert" class="alert" style="display: none;"></div>
+
+        <div id="pre-mood-picker" class="mood-picker">
+          <div class="mood-btn" data-mood="Overwhelmed (1/5)">
+            <span class="emoji">🌪️</span>
+            <span class="label">Overwhelmed</span>
+          </div>
+          <div class="mood-btn" data-mood="Stressed (2/5)">
+            <span class="emoji">⚡</span>
+            <span class="label">Stressed</span>
+          </div>
+          <div class="mood-btn" data-mood="Heavy (2/5)">
+            <span class="emoji">🌧️</span>
+            <span class="label">Heavy</span>
+          </div>
+          <div class="mood-btn" data-mood="Restless (3/5)">
+            <span class="emoji">🌊</span>
+            <span class="label">Restless</span>
+          </div>
+          <div class="mood-btn" data-mood="Reflective (3/5)">
+            <span class="emoji">⛅</span>
+            <span class="label">Reflective</span>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; margin-top: 2.5rem;">
+          <button class="btn btn-secondary" onclick="showView('dashboard')">Cancel</button>
+          <button class="btn btn-primary" onclick="submitPreCheckinAndContinue()">Continue to Air It Out →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         6. VIEW: AIR IT OUT (FR-020, FR-021, FR-022)
+         ========================================================================= -->
+    <section id="view-air-it-out" class="view-container" style="display: none;">
+      <div class="card" style="max-width: 780px; margin: 2rem auto;">
+        <div class="ai-badge">Step 2 of 3 · Air It Out</div>
+        <h2 style="font-size: 1.8rem; margin-bottom: 0.5rem;">Get what's in your head out.</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+          Write freely without worrying about grammar, structure, or tone. This is your safe, unjudged space.
+        </p>
+
+        <div id="vent-alert" class="alert" style="display: none;"></div>
+
+        <div class="form-group">
+          <textarea
+            id="vent-textarea"
+            class="form-textarea"
+            placeholder="What feels heavy right now? What happened today? Say whatever comes to mind..."
+            style="min-height: 260px; font-size: 1.05rem;"
+          ></textarea>
+          <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;">
+            <span id="vent-char-count">0 characters</span>
+            <span>🔒 Never logged in plaintext</span>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; margin-top: 2rem; flex-wrap: wrap; gap: 1rem;">
+          <button class="btn btn-secondary" onclick="showView('pre-checkin')">← Back to Check-In</button>
+          <button id="submit-vent-btn" class="btn btn-primary" onclick="submitVentingEntry()">
+            Release & Decompress 🌬️
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         7. VIEW: DECOMPRESS & REFRAME (FR-030 to FR-035)
+         ========================================================================= -->
+    <section id="view-reframe" class="view-container" style="display: none;">
+      <div class="card" style="max-width: 820px; margin: 2rem auto;">
+
+        <!-- Loading & Breathing Exercise State -->
+        <div id="reframe-loading" class="breathing-box">
+          <div class="breathing-circle">🌬️</div>
+          <h3 style="font-size: 1.6rem; margin-bottom: 0.5rem;">Breathe In... Breathe Out...</h3>
+          <p style="color: var(--text-secondary); max-width: 480px;">
+            Untangling your thoughts and crafting a constructive reflection. Give your mind a moment of quiet pause.
+          </p>
+        </div>
+
+        <!-- Result State: Original Vent vs AI Reflection -->
+        <div id="reframe-result" style="display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.5rem;">
+            <h2>Decompress & Reframe</h2>
+            <div class="ai-badge">✓ AI-Generated Reflection</div>
+          </div>
+
+          <!-- Original Entry (Untouched - FR-032, FR-033) -->
+          <div style="margin-bottom: 2rem;">
+            <h4 style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; margin-bottom: 0.5rem;">
+              Your Original Expression (Untouched)
+            </h4>
+            <div id="reframe-user-vent" style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.25rem; color: var(--text-secondary); font-size: 0.95rem; font-style: italic;"></div>
+          </div>
+
+          <!-- AI Guided Reflection -->
+          <div>
+            <h4 style="color: var(--accent-cyan); font-size: 0.85rem; text-transform: uppercase; margin-bottom: 0.5rem;">
+              Guided Reflection & Grounding
+            </h4>
+            <div id="reframe-ai-output" class="reflection-box"></div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; margin-top: 2.5rem;">
+            <button class="btn btn-primary" onclick="proceedToPostCheckin()">
+              Track Your Reset Delta →
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         8. VIEW: TRACK YOUR RESET (POST-SESSION CHECK-IN) (FR-041)
+         ========================================================================= -->
+    <section id="view-post-checkin" class="view-container" style="display: none;">
+      <div class="card" style="max-width: 640px; margin: 2rem auto;">
+        <div class="ai-badge">Step 3 of 3 · Reset Complete</div>
+        <h2 style="font-size: 1.8rem; margin-bottom: 0.75rem;">How does your mind feel now?</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+          Notice any shifts in your body or mental clarity after airing it out and reframing.
+        </p>
+
+        <div id="post-checkin-alert" class="alert" style="display: none;"></div>
+
+        <div id="post-mood-picker" class="mood-picker">
+          <div class="mood-btn" data-mood="Much Calmer (4/5)">
+            <span class="emoji">🌿</span>
+            <span class="label">Much Calmer</span>
+          </div>
+          <div class="mood-btn" data-mood="Clear-Headed (4/5)">
+            <span class="emoji">✨</span>
+            <span class="label">Clear-Headed</span>
+          </div>
+          <div class="mood-btn" data-mood="Relieved (5/5)">
+            <span class="emoji">🌈</span>
+            <span class="label">Relieved</span>
+          </div>
+          <div class="mood-btn" data-mood="Grounded (4/5)">
+            <span class="emoji">⚓</span>
+            <span class="label">Grounded</span>
+          </div>
+          <div class="mood-btn" data-mood="Still Processing (3/5)">
+            <span class="emoji">🌱</span>
+            <span class="label">Processing</span>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; margin-top: 2.5rem;">
+          <button class="btn btn-primary" onclick="submitPostCheckin()">Complete Reset & Finish 🎉</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         9. VIEW: HISTORY (FR-024)
+         ========================================================================= -->
+    <section id="view-history" class="view-container" style="display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h1 style="font-size: 2.2rem; margin-bottom: 0.35rem;">Session History</h1>
+          <p style="color: var(--text-secondary);">Review your past venting entries and reframed reflections.</p>
+        </div>
+        <button class="btn btn-primary" onclick="startNewSessionFlow()">+ New Session</button>
+      </div>
+
+      <div id="history-sessions-list">
+        <p style="color: var(--text-muted);">Loading past entries...</p>
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         10. VIEW: SESSION DETAIL (Section 10)
+         ========================================================================= -->
+    <section id="view-session-detail" class="view-container" style="display: none;">
+      <div class="card" style="max-width: 820px; margin: 2rem auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.5rem;">
+          <button class="btn btn-sm btn-secondary" onclick="showView('history')">← Back to History</button>
+          <span id="detail-timestamp" style="color: var(--text-muted); font-size: 0.85rem;"></span>
+        </div>
+
+        <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+          <span class="mood-badge">Before: <strong id="detail-pre-mood" style="color: #fff; margin-left: 0.25rem;"></strong></span>
+          <span class="mood-badge" style="background: rgba(52, 211, 153, 0.15); color: #6ee7b7;">After: <strong id="detail-post-mood" style="color: #6ee7b7; margin-left: 0.25rem;"></strong></span>
+        </div>
+
+        <div style="margin-bottom: 2rem;">
+          <h4 style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; margin-bottom: 0.5rem;">Original Expression</h4>
+          <div id="detail-content" style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.25rem; color: #e2e8f0; white-space: pre-wrap; line-height: 1.7;"></div>
+        </div>
+
+        <div id="detail-reflection-box" style="display: none; margin-bottom: 2rem;">
+          <div class="ai-badge">✓ AI-Generated Reflection</div>
+          <div id="detail-reflection-content" class="reflection-box"></div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem;">
+          <button id="detail-request-reframing-btn" class="btn btn-primary" onclick="triggerDetailReframing()">
+            Request Decompress & Reframe 🌿
+          </button>
+          <button class="btn btn-danger" onclick="deleteSessionById(state.currentSession.id)">
+            Delete Session
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================================
+         11. VIEW: SETTINGS & ACCOUNT CONTROLS (FR-052)
+         ========================================================================= -->
+    <section id="view-settings" class="view-container" style="display: none;">
+      <div class="card" style="max-width: 640px; margin: 2rem auto;">
+        <h2 style="margin-bottom: 0.5rem;">Account Settings</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 2rem;">Manage your credentials and data privacy controls</p>
+
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 2rem;">
+          <div style="margin-bottom: 0.75rem;">
+            <div style="font-size: 0.8rem; color: var(--text-muted);">Account Email</div>
+            <div id="settings-user-email" style="font-size: 1.05rem; font-weight: 600; color: #fff;"></div>
+          </div>
+          <div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">User ID</div>
+            <div id="settings-user-id" style="font-size: 0.9rem; color: var(--text-secondary); font-family: monospace;"></div>
+          </div>
+        </div>
+
+        <!-- Privacy & Data Deletion (FR-052) -->
+        <div style="border-top: 1px solid var(--border-subtle); padding-top: 2rem;">
+          <h3 style="color: var(--accent-rose); font-size: 1.15rem; margin-bottom: 0.5rem;">Danger Zone</h3>
+          <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">
+            Permanently delete your account along with all venting sessions, check-ins, and reflections. This action cannot be reversed.
+          </p>
+          <button class="btn btn-danger" onclick="confirmDeleteAccount()">
+            Permanently Delete Account & All Data
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    <div style="max-width: 1040px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <strong>AirSpace</strong> · Life gets heavy. Let it out.
+      </div>
+      <div>
+        MVP Pitch Release · 4 November 2026
+      </div>
+    </div>
+  </footer>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

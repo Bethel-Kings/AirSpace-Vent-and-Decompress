@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: airspace-web
+    runtime: python
+    region: frankfurt # or oregon / ohio
+    plan: free
+    buildCommand: "pip install -r requirements.txt && alembic upgrade head"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /healthz
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: airspace-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: AI_PROVIDER
+        value: gemini
+      - key: AI_PROVIDER_API_KEY
+        sync: false
+      - key: AI_MODEL_NAME
+        value: gemini-2.5-flash
+
+databases:
+  - name: airspace-db
+    plan: free
+    region: frankfurt
+    databaseName: airspace
+    user: airspace_user
