@@ -11,6 +11,8 @@ class AirSpaceSession(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     content = Column(Text, nullable=False)
+    input_type = Column(String(32), default="text", nullable=False)  # "text" or "audio"
+    status = Column(String(32), default="completed", nullable=False)  # "draft", "active", "completed"
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
     updated_at = Column(
         DateTime,

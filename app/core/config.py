@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     PORT: int = 8000
     
     # Security & Authentication
-    SECRET_KEY: str = eb8a8b6c7b0110b325ecdb262c98e6ce0f46f0fcd739ea55a78ac6f4b7d0c1d6
+    SECRET_KEY: str = "dev-secret-key-change-in-production-min-32-chars-long"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
     ALGORITHM: str = "HS256"
     
@@ -31,12 +31,13 @@ class Settings(BaseSettings):
 
     # AI Provider Configuration (Decompress & Reframe)
     AI_PROVIDER: str = "gemini"  # "gemini", "mock" (for tests / fallback)
-    AI_PROVIDER_API_KEY: str = "AQ.Ab8RN6JTDeFnB-0Joc--2YdjCW1lSoBzzjL14l0ObwtbIedwnQ"
+    AI_PROVIDER_API_KEY: str = ""
     AI_MODEL_NAME: str = "gemini-2.5-flash"
     AI_PROMPT_VERSION: str = "v1.0"
     
+    
     # CORS Configuration
-    CORS_ORIGINS: List[str] = [
+    CORS_ORIGINS: Union[List[str], str] = [
         "http://localhost:8000",
         "http://127.0.0.1:8000",
         "https://airspace.onrender.com",
@@ -45,7 +46,13 @@ class Settings(BaseSettings):
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
-        if isinstance(v, str) and not v.startswith("["):
+        if isinstance(v, str):
+            if v.startswith("[") and v.endswith("]"):
+                import json
+                try:
+                    return json.loads(v)
+                except Exception:
+                    pass
             return [i.strip() for i in v.split(",") if i.strip()]
         elif isinstance(v, list):
             return v

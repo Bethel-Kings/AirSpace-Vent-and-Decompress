@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, Text, String, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 
 from app.db.session import Base
@@ -17,6 +17,8 @@ class Reflection(Base):
         index=True,
     )
     content = Column(Text, nullable=False)
+    source = Column(String(64), default="ai_gemini", nullable=False)  # "ai_gemini", "mock", "system"
+    is_saved = Column(Boolean, default=True, nullable=False)  # User retention control (FR-023, FR-024)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     session = relationship("AirSpaceSession", back_populates="reflection")

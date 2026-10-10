@@ -9,6 +9,13 @@ from app.main import app
 from app.db.session import Base, get_db
 from app.core.security import hash_password
 from app.models.user import User
+from app.core.config import settings
+
+# In tests, use mocked AI provider per Testing Requirements:
+# "AI integration tests using mocked providers; do not make production-provider calls in ordinary test suites."
+settings.AI_PROVIDER = "mock"
+from app.services.ai import ai_reflection_service
+ai_reflection_service.provider = "mock"
 
 # In-memory SQLite engine for tests
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"

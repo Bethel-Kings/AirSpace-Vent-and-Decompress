@@ -8,7 +8,12 @@ from app.schemas.session import (
     SessionListResponse,
 )
 from app.schemas.check_in import CheckInCreate, CheckInResponse
-from app.schemas.reflection import ReflectionRequest, ReflectionResponse
+from app.schemas.reflection import (
+    ReflectionRequest,
+    ReflectionResponse,
+    ReflectionRetentionUpdate,
+)
+from app.schemas.audio import AudioAssetResponse, AudioTranscriptionRequest
 
 __all__ = [
     "Token",
@@ -25,4 +30,7 @@ __all__ = [
     "CheckInResponse",
     "ReflectionRequest",
     "ReflectionResponse",
+    "ReflectionRetentionUpdate",
+    "AudioAssetResponse",
+    "AudioTranscriptionRequest",
 ]

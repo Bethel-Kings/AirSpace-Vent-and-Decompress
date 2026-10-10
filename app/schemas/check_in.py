@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class CheckInCreate(BaseModel):
-    stage: Literal["before", "after"]
+    stage: Literal["before", "after", "reset_3d", "reset_5d", "reset_7d", "reset_14d", "followup"]
     value: str = Field(..., min_length=1, max_length=64, description="Mood rating or emotional label")
 
 
