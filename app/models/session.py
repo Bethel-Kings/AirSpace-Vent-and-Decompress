@@ -34,3 +34,4 @@ class AirSpaceSession(Base):
         uselist=False,
         cascade="all, delete-orphan",
     )
+    audio_asset = relationship("AudioAsset", back_populates="session", uselist=False)

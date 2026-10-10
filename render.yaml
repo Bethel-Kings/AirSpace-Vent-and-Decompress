@@ -21,7 +21,7 @@ services:
       - key: AI_PROVIDER_API_KEY
         sync: false
       - key: AI_MODEL_NAME
-        value: gemini-2.5-flash
+        value: gemini-3.8-flash
 
 databases:
   - name: airspace-db

@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     # AI Provider Configuration (Decompress & Reframe)
     AI_PROVIDER: str = "gemini"  # "gemini", "mock" (for tests / fallback)
     AI_PROVIDER_API_KEY: str = ""
-    AI_MODEL_NAME: str = "gemini-2.5-flash"
+    AI_MODEL_NAME: str = "gemini-3.8-flash"
     AI_PROMPT_VERSION: str = "v1.0"
     
     
