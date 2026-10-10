@@ -15,6 +15,7 @@ class AudioAsset(Base):
         unique=True,
         index=True,
     )
+    
     storage_key = Column(String(255), nullable=True)
     duration = Column(Float, nullable=True)  # duration in seconds
     transcription_status = Column(String(32), default="completed", nullable=False)  # pending, processing, completed, failed
