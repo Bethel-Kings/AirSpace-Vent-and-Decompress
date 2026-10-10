@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "dev-secret-key-change-in-production-min-32-chars-long"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
     ALGORITHM: str = "HS256"
+    AUTH_RATE_LIMIT: str = "10/minute"
+    REFLECT_RATE_LIMIT: str = "8/minute"
+    MAX_VENT_CHARS: int = 12000
+    RATE_LIMIT_ENABLED: bool = True
     
     # Database Configuration
     DATABASE_URL: str = "sqlite:///./airspace.db"

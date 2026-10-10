@@ -56,3 +56,36 @@ def test_reflect_session_ai_failure_preserves_content(client, auth_headers):
     session_check = client.get(f"/api/v1/sessions/{session_id}", headers=auth_headers).json()
     assert session_check["content"] == original_text
     assert session_check["reflection"] is None
+
+
+def test_reflection_retention_control(client, auth_headers):
+    create_resp = client.post(
+        "/api/v1/sessions",
+        headers=auth_headers,
+        json={"content": "A session used to test keep-or-discard reflection control."},
+    )
+    session_id = create_resp.json()["id"]
+    original = create_resp.json()["content"]
+
+    draft = client.post(
+        f"/api/v1/sessions/{session_id}/reflect",
+        headers=auth_headers,
+        json={"save_immediately": False},
+    )
+    assert draft.status_code == status.HTTP_200_OK
+    assert draft.json()["is_saved"] is False
+
+    kept = client.patch(
+        f"/api/v1/sessions/{session_id}/reflection",
+        headers=auth_headers,
+        json={"is_saved": True},
+    )
+    assert kept.status_code == status.HTTP_200_OK
+    assert kept.json()["is_saved"] is True
+
+    discarded = client.delete(f"/api/v1/sessions/{session_id}/reflection", headers=auth_headers)
+    assert discarded.status_code == status.HTTP_200_OK
+
+    session_check = client.get(f"/api/v1/sessions/{session_id}", headers=auth_headers).json()
+    assert session_check["content"] == original
+    assert session_check["reflection"] is None

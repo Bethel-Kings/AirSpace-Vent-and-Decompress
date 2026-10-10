@@ -14,6 +14,9 @@ from app.core.config import settings
 # In tests, use mocked AI provider per Testing Requirements:
 # "AI integration tests using mocked providers; do not make production-provider calls in ordinary test suites."
 settings.AI_PROVIDER = "mock"
+settings.RATE_LIMIT_ENABLED = False
+from app.core.rate_limit import limiter
+limiter.enabled = False
 from app.services.ai import ai_reflection_service
 ai_reflection_service.provider = "mock"
 

@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from app.db.session import Base
@@ -7,6 +7,9 @@ from app.db.session import Base
 
 class CheckIn(Base):
     __tablename__ = "check_ins"
+    __table_args__ = (
+        UniqueConstraint("session_id", "stage", name="uq_checkin_session_stage"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     session_id = Column(
@@ -15,7 +18,7 @@ class CheckIn(Base):
         nullable=False,
         index=True,
     )
-    stage = Column(String(32), nullable=False)  # "before" or "after"
+    stage = Column(String(32), nullable=False)  # before, after, reset_3d, reset_5d, reset_7d, reset_14d, followup
     value = Column(String(64), nullable=False)  # e.g., "1".."5" or emotional descriptor
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 

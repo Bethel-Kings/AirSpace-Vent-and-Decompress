@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: airspace
+      POSTGRES_USER: airspace
+      POSTGRES_PASSWORD: airspace
+    ports:
+      - "5432:5432"
+    volumes:
+      - airspace_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airspace -d airspace"]
+      interval: 5s
+      timeout: 5s
+      retries: 8
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql://airspace:airspace@db:5432/airspace
+      SECRET_KEY: local-compose-secret-change-me
+      AI_PROVIDER: mock
+      RATE_LIMIT_ENABLED: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  airspace_pg:

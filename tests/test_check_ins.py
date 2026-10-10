@@ -43,6 +43,36 @@ def test_create_and_get_check_ins(client, auth_headers):
     assert "after" in stages
 
 
+def test_check_in_history_and_followups(client, auth_headers, db_session):
+    create_resp = client.post(
+        "/api/v1/sessions",
+        headers=auth_headers,
+        json={"content": "Need a later reset check-in.", "initial_mood": "Heavy (2/5)"},
+    )
+    session_id = create_resp.json()["id"]
+    client.post(
+        f"/api/v1/sessions/{session_id}/check-ins",
+        headers=auth_headers,
+        json={"stage": "after", "value": "Much Calmer (4/5)"},
+    )
+    client.post(
+        f"/api/v1/sessions/{session_id}/check-ins",
+        headers=auth_headers,
+        json={"stage": "reset_3d", "value": "Steadier (4/5)"},
+    )
+
+    history = client.get("/api/v1/check-ins", headers=auth_headers)
+    assert history.status_code == status.HTTP_200_OK
+    assert history.json()["total"] >= 3
+    stages = {item["stage"] for item in history.json()["check_ins"]}
+    assert {"before", "after", "reset_3d"} <= stages
+
+    followups = client.get("/api/v1/reset-followups", headers=auth_headers)
+    assert followups.status_code == status.HTTP_200_OK
+    assert "pending" in followups.json()
+    assert "completed" in followups.json()
+
+
 def test_cross_user_check_in_blocked(client, auth_headers, second_auth_headers):
     # User 1 creates session
     create_resp = client.post(
@@ -59,3 +89,7 @@ def test_cross_user_check_in_blocked(client, auth_headers, second_auth_headers):
         json={"stage": "before", "value": "Sneaky Checkin"},
     )
     assert hack_resp.status_code == status.HTTP_404_NOT_FOUND
+
+    history = client.get("/api/v1/check-ins", headers=second_auth_headers)
+    assert history.status_code == status.HTTP_200_OK
+    assert history.json()["total"] == 0

@@ -55,6 +55,17 @@ def test_get_me_unauthenticated(client):
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
+def test_logout_invalidates_token(client, auth_headers):
+    me = client.get("/api/v1/me", headers=auth_headers)
+    assert me.status_code == status.HTTP_200_OK
+
+    logout = client.post("/api/v1/auth/logout", headers=auth_headers)
+    assert logout.status_code == status.HTTP_200_OK
+
+    after = client.get("/api/v1/me", headers=auth_headers)
+    assert after.status_code == status.HTTP_401_UNAUTHORIZED
+
+
 def test_delete_account(client, auth_headers):
     response = client.delete("/api/v1/account", headers=auth_headers)
     assert response.status_code == status.HTTP_200_OK
