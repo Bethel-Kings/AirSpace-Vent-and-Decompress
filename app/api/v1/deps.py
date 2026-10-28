@@ -58,4 +58,12 @@ def get_current_user(
             detail="User not found",
         )
 
+    token_version = int(payload.get("ver") or 0)
+    if token_version != int(user.token_version or 0):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session has been invalidated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     return user

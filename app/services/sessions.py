@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from app.models.user import User
@@ -28,7 +28,7 @@ def create_session(db: Session, user: User, session_in: SessionCreate) -> AirSpa
         user_id=user.id,
         content=session_in.content,
         input_type=session_in.input_type or "text",
-        status=session_in.status or "completed",
+        status=session_in.status or "draft",
     )
     db.add(session)
     db.flush()

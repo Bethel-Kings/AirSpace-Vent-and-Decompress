@@ -32,6 +32,16 @@ def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
         return None
     return user
 
+
+def issue_token(user: User) -> str:
+    return create_access_token(subject=user.id, token_version=user.token_version or 0)
+
+
+def invalidate_sessions(db: Session, user: User) -> None:
+    """Logout invalidates outstanding JWTs by bumping token_version (FR-004)."""
+    user.token_version = (user.token_version or 0) + 1
+    db.commit()
+
     
 def delete_user_and_data(db: Session, user: User) -> None:
     """Cascade deletion of all user sessions, check-ins, and reflections (FR-005, FR-043)."""

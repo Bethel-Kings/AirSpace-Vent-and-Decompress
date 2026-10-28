@@ -84,6 +84,16 @@ def test_pitch_acceptance_criteria_end_to_end_journey(client):
     attacker_attempt = client.get(f"/api/v1/sessions/{session_id}", headers=attacker_headers)
     assert attacker_attempt.status_code == status.HTTP_404_NOT_FOUND
 
+    followup = client.post(
+        f"/api/v1/sessions/{session_id}/check-ins",
+        headers=headers,
+        json={"stage": "reset_7d", "value": "Clearer (5/5)"},
+    )
+    assert followup.status_code == status.HTTP_201_CREATED
+    history = client.get("/api/v1/check-ins", headers=headers)
+    assert history.status_code == status.HTTP_200_OK
+    assert any(item["stage"] == "reset_7d" for item in history.json()["check_ins"])
+
     # AC-10: The user can delete their session.
     delete_res = client.delete(f"/api/v1/sessions/{session_id}", headers=headers)
     assert delete_res.status_code == status.HTTP_200_OK

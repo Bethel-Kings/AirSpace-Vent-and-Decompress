@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "dev-secret-key-change-in-production-min-32-chars-long"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
     ALGORITHM: str = "HS256"
+    AUTH_RATE_LIMIT: str = "10/minute"
+    REFLECT_RATE_LIMIT: str = "8/minute"
+    MAX_VENT_CHARS: int = 12000
+    RATE_LIMIT_ENABLED: bool = True
     
     # Database Configuration
     DATABASE_URL: str = "sqlite:///./airspace.db"
@@ -32,7 +36,7 @@ class Settings(BaseSettings):
     # AI Provider Configuration (Decompress & Reframe)
     AI_PROVIDER: str = "gemini"  # "gemini", "mock" (for tests / fallback)
     AI_PROVIDER_API_KEY: str = ""
-    AI_MODEL_NAME: str = "gemini-2.5-flash"
+    AI_MODEL_NAME: str = "gemini-3.8-flash"
     AI_PROMPT_VERSION: str = "v1.0"
     
     

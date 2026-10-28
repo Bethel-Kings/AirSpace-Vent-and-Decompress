@@ -29,8 +29,12 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         return False
 
 
-def create_access_token(subject: str | int, expires_delta: Optional[timedelta] = None) -> str:
-    """Creates a signed JWT access token."""
+def create_access_token(
+    subject: str | int,
+    expires_delta: Optional[timedelta] = None,
+    token_version: int = 0,
+) -> str:
+    """Creates a signed JWT access token bound to the user's token_version."""
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
@@ -38,6 +42,7 @@ def create_access_token(subject: str | int, expires_delta: Optional[timedelta] =
     
     to_encode: Dict[str, Any] = {
         "sub": str(subject),
+        "ver": int(token_version),
         "exp": expire,
         "iat": datetime.now(timezone.utc),
     }

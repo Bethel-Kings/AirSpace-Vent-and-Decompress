@@ -1,6 +1,18 @@
 from fastapi import status
 
 
+def test_health_endpoints(client):
+    for path in ("/health", "/healthz", "/ready"):
+        response = client.get(path)
+        assert response.status_code == 200
+        assert response.json()["status"] in {"healthy", "ready"}
+
+
+def test_unauthenticated_session_access_rejected(client):
+    response = client.get("/api/v1/sessions")
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
 def test_create_session(client, auth_headers):
     response = client.post(
         "/api/v1/sessions",

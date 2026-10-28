@@ -1,70 +1,40 @@
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.api.v1.deps import get_current_user
 from app.db.session import get_db
 from app.models.user import User
-from app.models.session import AirSpaceSession
-from app.models.check_in import CheckIn
-from app.models.reflection import Reflection
 from app.schemas.session import (
     SessionCreate,
     SessionUpdate,
-    SessionResponse,
     SessionDetailResponse,
     SessionListResponse,
 )
-from app.schemas.reflection import ReflectionRequest, ReflectionResponse
-from app.services.ai import ai_reflection_service, AIServiceError
+from app.services.safety import evaluate_content_safety
+from app.services.sessions import (
+    create_session,
+    delete_session,
+    get_user_session_or_404,
+    list_user_sessions,
+    update_session,
+)
 
 router = APIRouter(prefix="/sessions", tags=["Sessions"])
 
 
-def _get_user_session(session_id: int, user: User, db: Session) -> AirSpaceSession:
-    """Helper to enforce strict server-side resource ownership (FR-050, FR-051)."""
-    session = (
-        db.query(AirSpaceSession)
-        .filter(AirSpaceSession.id == session_id, AirSpaceSession.user_id == user.id)
-        .first()
-    )
-    if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Session not found",
-        )
-    return session
+def _session_payload(session) -> SessionDetailResponse:
+    payload = SessionDetailResponse.model_validate(session)
+    return payload.model_copy(update={"safety": evaluate_content_safety(session.content or "")})
 
 
 @router.post("", response_model=SessionDetailResponse, status_code=status.HTTP_201_CREATED)
-def create_session(
+def create_airspace_session(
     session_in: SessionCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    FR-020, FR-021, FR-022, FR-023:
-    Creates a new venting session with unique ID and timestamp.
-    Optionally records initial 'before' emotional check-in if provided.
-    """
-    session = AirSpaceSession(
-        user_id=current_user.id,
-        content=session_in.content,
-    )
-    db.add(session)
-    db.flush()  # obtain session.id
-
-    if session_in.initial_mood:
-        check_in = CheckIn(
-            session_id=session.id,
-            stage="before",
-            value=session_in.initial_mood,
-        )
-        db.add(check_in)
-
-    db.commit()
-    db.refresh(session)
-    return session
+    session = create_session(db, current_user, session_in)
+    return _session_payload(session)
 
 
 @router.get("", response_model=SessionListResponse)
@@ -72,14 +42,11 @@ def list_sessions(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """FR-024: Returns all sessions belonging to the authenticated user."""
-    sessions = (
-        db.query(AirSpaceSession)
-        .filter(AirSpaceSession.user_id == current_user.id)
-        .order_by(AirSpaceSession.created_at.desc())
-        .all()
+    sessions = list_user_sessions(db, current_user)
+    return SessionListResponse(
+        sessions=[_session_payload(s) for s in sessions],
+        total=len(sessions),
     )
-    return SessionListResponse(sessions=sessions, total=len(sessions))
 
 
 @router.get("/{session_id}", response_model=SessionDetailResponse)
@@ -88,88 +55,28 @@ def get_session(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Retrieves a single session with its check-ins and reflection."""
-    return _get_user_session(session_id, current_user, db)
+    session = get_user_session_or_404(db, session_id, current_user)
+    return _session_payload(session)
 
 
 @router.patch("/{session_id}", response_model=SessionDetailResponse)
-def update_session(
+def patch_session(
     session_id: int,
     session_update: SessionUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Updates the content of an existing session draft."""
-    session = _get_user_session(session_id, current_user, db)
-    if session_update.content is not None:
-        session.content = session_update.content
-    db.commit()
-    db.refresh(session)
-    return session
+    session = get_user_session_or_404(db, session_id, current_user)
+    session = update_session(db, session, session_update)
+    return _session_payload(session)
 
 
 @router.delete("/{session_id}", status_code=status.HTTP_200_OK)
-def delete_session(
+def remove_session(
     session_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """FR-025: Deletes the user's session and associated data."""
-    session = _get_user_session(session_id, current_user, db)
-    db.delete(session)
-    db.commit()
+    session = get_user_session_or_404(db, session_id, current_user)
+    delete_session(db, session)
     return {"message": "Session successfully deleted"}
-
-
-@router.post("/{session_id}/reflect", response_model=ReflectionResponse)
-def reflect_session(
-    session_id: int,
-    reflect_req: ReflectionRequest = ReflectionRequest(),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """
-    FR-030 to FR-035:
-    Requests an AI reflection for the selected session.
-    Guarantees:
-    - User content is not overwritten (FR-033).
-    - If AI fails, saved session is preserved without loss (FR-034).
-    - Reflection is separate entity (FR-032).
-    """
-    session = _get_user_session(session_id, current_user, db)
-
-    # If reflection already exists, return existing or update
-    existing_reflection = (
-        db.query(Reflection).filter(Reflection.session_id == session.id).first()
-    )
-
-    try:
-        reflection_text = ai_reflection_service.generate_reflection(
-            vent_content=session.content,
-            focus=reflect_req.focus,
-        )
-    except AIServiceError as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Decompress & Reframe service is temporarily busy: {str(e)}",
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unexpected error generating reflection",
-        )
-
-    if existing_reflection:
-        existing_reflection.content = reflection_text
-        db.commit()
-        db.refresh(existing_reflection)
-        return existing_reflection
-    else:
-        reflection = Reflection(
-            session_id=session.id,
-            content=reflection_text,
-        )
-        db.add(reflection)
-        db.commit()
-        db.refresh(reflection)
-        return reflection

@@ -2,16 +2,30 @@
    AIRSPACE — Frontend Controller & State Machine
    ========================================================================== */
 
+const FOLLOWUP_LABELS = {
+  reset_3d: "3-day reset",
+  reset_5d: "5-day reset",
+  reset_7d: "7-day reset",
+};
+
+const FOLLOWUP_MOODS = [
+  { value: "Still heavy (1/5)", emoji: "🌧️", label: "Still heavy" },
+  { value: "Mixed (3/5)", emoji: "⛅", label: "Mixed" },
+  { value: "Steadier (4/5)", emoji: "🌿", label: "Steadier" },
+  { value: "Clearer (5/5)", emoji: "✨", label: "Clearer" },
+];
+
 const state = {
   currentUser: null,
   token: localStorage.getItem("airspace_token") || null,
   currentSession: null,
   preMood: null,
   postMood: null,
-  activeView: "landing"
+  activeView: "landing",
+  pendingFollowupStage: null,
+  autosaveTimer: null,
 };
 
-// API Client Helper
 async function api(endpoint, options = {}) {
   const headers = {
     "Content-Type": "application/json",
@@ -33,13 +47,12 @@ async function api(endpoint, options = {}) {
 
   if (!response.ok) {
     const errorMsg = data.detail || (typeof data === "string" ? data : "An error occurred");
-    throw new Error(errorMsg);
+    throw new Error(typeof errorMsg === "string" ? errorMsg : JSON.stringify(errorMsg));
   }
 
   return data;
 }
 
-// Router & View Switcher
 function showView(viewName) {
   state.activeView = viewName;
   document.querySelectorAll(".view-container").forEach((el) => {
@@ -54,10 +67,10 @@ function showView(viewName) {
 
   updateNav();
 
-  // Lifecycle hooks per view
   if (viewName === "dashboard") loadDashboard();
   if (viewName === "history") loadHistory();
   if (viewName === "settings") loadSettings();
+  if (viewName === "reset-tracking") loadResetTracking();
 }
 
 function updateNav() {
@@ -90,7 +103,25 @@ function showNotice(message, type = "error", containerId = null) {
   }, 5000);
 }
 
-// Authentication Handlers
+function renderCrisisBanner(safety, containerId = "crisis-banner") {
+  const box = document.getElementById(containerId);
+  if (!box) return;
+  if (!safety || !safety.is_crisis) {
+    box.style.display = "none";
+    box.innerHTML = "";
+    return;
+  }
+  const lines = (safety.helplines || [])
+    .map((h) => `<li><a href="${escapeHtml(h.url)}" target="_blank" rel="noopener">${escapeHtml(h.name)}</a> — ${escapeHtml(h.contact)}</li>`)
+    .join("");
+  box.innerHTML = `
+    <strong>${escapeHtml(safety.title || "Support is available")}</strong>
+    <p>${escapeHtml(safety.message || "")}</p>
+    <ul>${lines}</ul>
+  `;
+  box.style.display = "block";
+}
+
 async function checkAuth() {
   if (!state.token) {
     updateNav();
@@ -103,7 +134,7 @@ async function checkAuth() {
     updateNav();
     showView("dashboard");
   } catch (err) {
-    logout();
+    logout(true);
   }
 }
 
@@ -130,16 +161,15 @@ async function registerUser(email, password) {
       method: "POST",
       body: JSON.stringify({ email, password }),
     });
-    // Auto-login after registration
     await loginUser(email, password);
   } catch (err) {
     showNotice(err.message, "error", "register-alert");
   }
 }
 
-async function logout() {
+async function logout(silent = false) {
   try {
-    await api("/auth/logout", { method: "POST" });
+    if (!silent) await api("/auth/logout", { method: "POST" });
   } catch (e) {}
   state.token = null;
   state.currentUser = null;
@@ -148,17 +178,18 @@ async function logout() {
   showView("landing");
 }
 
-// Flow: Vent & Decompress Journey
 function startNewSessionFlow() {
   state.currentSession = null;
   state.preMood = null;
   state.postMood = null;
+  state.pendingFollowupStage = null;
 
-  // Reset mood buttons
   document.querySelectorAll("#pre-mood-picker .mood-btn").forEach((b) => b.classList.remove("selected"));
   document.querySelectorAll("#post-mood-picker .mood-btn").forEach((b) => b.classList.remove("selected"));
   document.getElementById("vent-textarea").value = "";
   document.getElementById("vent-char-count").textContent = "0 characters";
+  document.getElementById("vent-autosave-status").textContent = "Drafts autosave privately";
+  renderCrisisBanner(null);
 
   showView("pre-checkin");
 }
@@ -169,6 +200,37 @@ async function submitPreCheckinAndContinue() {
     return;
   }
   showView("air-it-out");
+}
+
+async function autosaveDraft() {
+  const content = document.getElementById("vent-textarea").value;
+  const statusEl = document.getElementById("vent-autosave-status");
+  if (!content.trim() || !state.preMood) return;
+
+  try {
+    if (!state.currentSession) {
+      const session = await api("/sessions", {
+        method: "POST",
+        body: JSON.stringify({
+          content,
+          initial_mood: state.preMood,
+          status: "draft",
+        }),
+      });
+      state.currentSession = session;
+      renderCrisisBanner(session.safety);
+    } else {
+      const session = await api(`/sessions/${state.currentSession.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ content, status: "draft" }),
+      });
+      state.currentSession = session;
+      renderCrisisBanner(session.safety);
+    }
+    if (statusEl) statusEl.textContent = "Draft saved";
+  } catch (err) {
+    if (statusEl) statusEl.textContent = "Autosave paused";
+  }
 }
 
 async function submitVentingEntry() {
@@ -183,14 +245,22 @@ async function submitVentingEntry() {
   submitBtn.textContent = "Saving Session...";
 
   try {
-    const session = await api("/sessions", {
-      method: "POST",
-      body: JSON.stringify({
-        content: content,
-        initial_mood: state.preMood,
-      }),
-    });
-    state.currentSession = session;
+    if (state.currentSession) {
+      state.currentSession = await api(`/sessions/${state.currentSession.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ content, status: "completed" }),
+      });
+    } else {
+      state.currentSession = await api("/sessions", {
+        method: "POST",
+        body: JSON.stringify({
+          content,
+          initial_mood: state.preMood,
+          status: "completed",
+        }),
+      });
+    }
+    renderCrisisBanner(state.currentSession.safety);
     submitBtn.disabled = false;
     submitBtn.textContent = "Release & Decompress";
     showDecompressView();
@@ -215,18 +285,51 @@ async function showDecompressView() {
   try {
     const reflection = await api(`/sessions/${state.currentSession.id}/reflect`, {
       method: "POST",
-      body: JSON.stringify({}),
+      body: JSON.stringify({ save_immediately: false }),
     });
     state.currentSession.reflection = reflection;
-
     loadingBox.style.display = "none";
     resultBox.style.display = "block";
     aiOutputDisplay.textContent = reflection.content;
   } catch (err) {
     loadingBox.style.display = "none";
     resultBox.style.display = "block";
-    aiOutputDisplay.textContent = `Note: The reflection assistant is taking a moment to recalibrate (${err.message}). Your session has been safely preserved! You can try reframing again or review it anytime in History.`;
+    aiOutputDisplay.textContent = `The reflection assistant is temporarily unavailable. Your original session is still saved. You can try reframing again from History.`;
   }
+}
+
+async function keepGeneratedReflection() {
+  if (!state.currentSession) return;
+  try {
+    const reflection = await api(`/sessions/${state.currentSession.id}/reflection`, {
+      method: "PATCH",
+      body: JSON.stringify({ is_saved: true }),
+    });
+    state.currentSession.reflection = reflection;
+    showNotice("Reflection saved with this session.", "success");
+  } catch (err) {
+    showNotice(err.message, "error");
+  }
+}
+
+async function discardGeneratedReflection() {
+  if (!state.currentSession) return;
+  try {
+    await api(`/sessions/${state.currentSession.id}/reflection`, { method: "DELETE" });
+    state.currentSession.reflection = null;
+    const output = document.getElementById("reframe-ai-output");
+    if (output) output.textContent = "Reflection discarded. Your original writing is unchanged.";
+    const detailBox = document.getElementById("detail-reflection-box");
+    if (detailBox && state.activeView === "session-detail") detailBox.style.display = "none";
+    showNotice("Reflection discarded. Your original session is intact.", "success");
+  } catch (err) {
+    showNotice(err.message, "error");
+  }
+}
+
+async function keepAndContinue() {
+  await keepGeneratedReflection();
+  proceedToPostCheckin();
 }
 
 function proceedToPostCheckin() {
@@ -248,20 +351,22 @@ async function submitPostCheckin() {
       }),
     });
     showView("dashboard");
-    showNotice("Your emotional reset is complete! Your session is safely stored in History.", "success", "dash-alert");
+    showNotice("Reset saved. We'll invite a 3, 5, and 7 day follow-up when those days arrive.", "success", "dash-alert");
   } catch (err) {
     showNotice(err.message, "error", "post-checkin-alert");
   }
 }
 
-// Dashboard & History
 async function loadDashboard() {
   try {
     const data = await api("/sessions");
+    const followups = await api("/reset-followups");
     const countEl = document.getElementById("stat-total-sessions");
+    const pendingEl = document.getElementById("stat-pending-resets");
     const recentList = document.getElementById("dashboard-recent-list");
 
     if (countEl) countEl.textContent = data.total;
+    if (pendingEl) pendingEl.textContent = followups.pending.length;
 
     if (recentList) {
       if (data.sessions.length === 0) {
@@ -293,6 +398,48 @@ async function loadHistory() {
   }
 }
 
+async function loadResetTracking() {
+  const pendingList = document.getElementById("reset-pending-list");
+  const historyList = document.getElementById("reset-history-list");
+  try {
+    const followups = await api("/reset-followups");
+    const history = await api("/check-ins");
+
+    if (!followups.pending.length) {
+      pendingList.innerHTML = `<p style="color: var(--text-muted);">No follow-ups due yet. Come back 3, 5, or 7 days after a session.</p>`;
+    } else {
+      pendingList.innerHTML = followups.pending
+        .map(
+          (item) => `
+        <div class="session-card" onclick="viewSessionDetail(${item.session_id})">
+          <div class="session-header">
+            <span>${FOLLOWUP_LABELS[item.stage] || item.stage} · due ${new Date(item.due_at).toLocaleDateString()}</span>
+          </div>
+          <div class="session-preview">"${escapeHtml(item.session_preview)}"</div>
+        </div>`
+        )
+        .join("");
+    }
+
+    if (!history.check_ins.length) {
+      historyList.innerHTML = `<p style="color: var(--text-muted);">No check-ins recorded yet.</p>`;
+    } else {
+      historyList.innerHTML = history.check_ins
+        .map(
+          (c) => `
+        <div class="checkin-row">
+          <span class="mood-badge">${escapeHtml(c.stage)}</span>
+          <span>${escapeHtml(c.value)}</span>
+          <span style="color: var(--text-muted); font-size: 0.85rem;">${new Date(c.created_at).toLocaleString()}</span>
+        </div>`
+        )
+        .join("");
+    }
+  } catch (err) {
+    pendingList.innerHTML = `<p style="color: var(--accent-rose);">${escapeHtml(err.message)}</p>`;
+  }
+}
+
 function renderSessionCard(session) {
   const dateStr = new Date(session.created_at).toLocaleString([], {
     month: "short",
@@ -302,13 +449,15 @@ function renderSessionCard(session) {
     minute: "2-digit",
   });
 
-  const preCheckin = session.check_ins.find((c) => c.stage === "before");
-  const postCheckin = session.check_ins.find((c) => c.stage === "after");
+  const preCheckin = (session.check_ins || []).find((c) => c.stage === "before");
+  const postCheckin = (session.check_ins || []).find((c) => c.stage === "after");
+  const followups = (session.check_ins || []).filter((c) => c.stage.startsWith("reset_"));
+  const savedReflection = session.reflection && session.reflection.is_saved;
 
   return `
     <div class="session-card" onclick="viewSessionDetail(${session.id})">
       <div class="session-header">
-        <span>🕒 ${dateStr}</span>
+        <span>🕒 ${dateStr}${session.status === "draft" ? " · Draft" : ""}</span>
         <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteSessionById(${session.id})">Delete</button>
       </div>
       <div class="session-preview">
@@ -318,11 +467,19 @@ function renderSessionCard(session) {
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
           ${preCheckin ? `<span class="mood-badge">Before: ${escapeHtml(preCheckin.value)}</span>` : ""}
           ${postCheckin ? `<span class="mood-badge" style="background: rgba(52, 211, 153, 0.15); color: #6ee7b7;">After: ${escapeHtml(postCheckin.value)}</span>` : ""}
+          ${followups.map((f) => `<span class="mood-badge">${FOLLOWUP_LABELS[f.stage] || f.stage}</span>`).join("")}
         </div>
-        ${session.reflection ? `<span class="mood-badge" style="background: rgba(56, 189, 248, 0.15); color: #7dd3fc;">✓ Reflected</span>` : ""}
+        ${savedReflection ? `<span class="mood-badge" style="background: rgba(56, 189, 248, 0.15); color: #7dd3fc;">✓ Reflected</span>` : ""}
       </div>
     </div>
   `;
+}
+
+function followupStageDue(session, stage, days) {
+  const created = new Date(session.created_at).getTime();
+  const due = created + days * 24 * 60 * 60 * 1000;
+  const has = (session.check_ins || []).some((c) => c.stage === stage);
+  return !has && Date.now() >= due;
 }
 
 async function viewSessionDetail(sessionId) {
@@ -333,28 +490,81 @@ async function viewSessionDetail(sessionId) {
     document.getElementById("detail-timestamp").textContent = new Date(session.created_at).toLocaleString();
     document.getElementById("detail-content").textContent = session.content;
 
-    const preCheckin = session.check_ins.find((c) => c.stage === "before");
-    const postCheckin = session.check_ins.find((c) => c.stage === "after");
+    const preCheckin = (session.check_ins || []).find((c) => c.stage === "before");
+    const postCheckin = (session.check_ins || []).find((c) => c.stage === "after");
     document.getElementById("detail-pre-mood").textContent = preCheckin ? preCheckin.value : "None recorded";
     document.getElementById("detail-post-mood").textContent = postCheckin ? postCheckin.value : "None recorded";
+    const followText = (session.check_ins || [])
+      .filter((c) => c.stage.startsWith("reset_"))
+      .map((c) => `${FOLLOWUP_LABELS[c.stage] || c.stage}: ${c.value}`)
+      .join(" · ");
+    document.getElementById("detail-followup-moods").textContent = followText || "";
 
     const refBox = document.getElementById("detail-reflection-box");
     const refText = document.getElementById("detail-reflection-content");
     const refBtn = document.getElementById("detail-request-reframing-btn");
+    const refActions = document.getElementById("detail-reflection-actions");
+    const refBadge = document.getElementById("detail-reflection-badge");
 
     if (session.reflection) {
       refBox.style.display = "block";
       refText.textContent = session.reflection.content;
-      refBtn.style.display = "none";
+      refBtn.style.display = session.reflection.is_saved ? "none" : "inline-flex";
+      refActions.style.display = session.reflection.is_saved ? "none" : "flex";
+      refBadge.textContent = session.reflection.is_saved ? "✓ Saved reflection" : "Draft reflection (not retained)";
     } else {
       refBox.style.display = "none";
       refBtn.style.display = "inline-flex";
+      refActions.style.display = "none";
     }
+
+    const dueStage =
+      (followupStageDue(session, "reset_3d", 3) && "reset_3d") ||
+      (followupStageDue(session, "reset_5d", 5) && "reset_5d") ||
+      (followupStageDue(session, "reset_7d", 7) && "reset_7d") ||
+      null;
+    renderFollowupPicker(dueStage);
 
     showView("session-detail");
   } catch (err) {
     showNotice(err.message, "error");
   }
+}
+
+function renderFollowupPicker(stage) {
+  const box = document.getElementById("detail-followup-box");
+  const picker = document.getElementById("followup-mood-picker");
+  const copy = document.getElementById("detail-followup-copy");
+  state.pendingFollowupStage = stage;
+  if (!stage) {
+    box.style.display = "none";
+    return;
+  }
+  box.style.display = "block";
+  copy.textContent = `This ${FOLLOWUP_LABELS[stage]} check-in is due. How does this situation sit with you now?`;
+  picker.innerHTML = FOLLOWUP_MOODS.map(
+    (m) => `
+    <div class="mood-btn" data-mood="${escapeHtml(m.value)}">
+      <span class="emoji">${m.emoji}</span>
+      <span class="label">${m.label}</span>
+    </div>`
+  ).join("");
+  picker.querySelectorAll(".mood-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      picker.querySelectorAll(".mood-btn").forEach((b) => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      try {
+        await api(`/sessions/${state.currentSession.id}/check-ins`, {
+          method: "POST",
+          body: JSON.stringify({ stage, value: btn.dataset.mood }),
+        });
+        showNotice("Follow-up check-in saved.", "success");
+        viewSessionDetail(state.currentSession.id);
+      } catch (err) {
+        showNotice(err.message, "error");
+      }
+    });
+  });
 }
 
 async function triggerDetailReframing() {
@@ -366,11 +576,13 @@ async function triggerDetailReframing() {
   try {
     const reflection = await api(`/sessions/${state.currentSession.id}/reflect`, {
       method: "POST",
-      body: JSON.stringify({}),
+      body: JSON.stringify({ save_immediately: false }),
     });
     state.currentSession.reflection = reflection;
     document.getElementById("detail-reflection-box").style.display = "block";
     document.getElementById("detail-reflection-content").textContent = reflection.content;
+    document.getElementById("detail-reflection-actions").style.display = "flex";
+    document.getElementById("detail-reflection-badge").textContent = "Draft reflection (not retained)";
     btn.style.display = "none";
   } catch (err) {
     showNotice(err.message, "error");
@@ -424,21 +636,17 @@ async function confirmDeleteAccount() {
 
 function escapeHtml(str) {
   if (!str) return "";
-  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-// Global Event Listeners
 document.addEventListener("DOMContentLoaded", () => {
-  // Navigation Buttons
   document.querySelectorAll("[data-nav]").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.preventDefault();
-      const target = btn.dataset.nav;
-      showView(target);
+      showView(btn.dataset.nav);
     });
   });
 
-  // Mood Pickers (Pre & Post)
   document.querySelectorAll("#pre-mood-picker .mood-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       document.querySelectorAll("#pre-mood-picker .mood-btn").forEach((b) => b.classList.remove("selected"));
@@ -455,16 +663,16 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // Vent Textarea character counting
   const ventTextarea = document.getElementById("vent-textarea");
   if (ventTextarea) {
     ventTextarea.addEventListener("input", () => {
       const len = ventTextarea.value.length;
       const words = ventTextarea.value.trim().split(/\s+/).filter(Boolean).length;
       document.getElementById("vent-char-count").textContent = `${words} words · ${len} characters`;
+      clearTimeout(state.autosaveTimer);
+      state.autosaveTimer = setTimeout(autosaveDraft, 1500);
     });
   }
 
-  // Initial Auth Check
   checkAuth();
 });

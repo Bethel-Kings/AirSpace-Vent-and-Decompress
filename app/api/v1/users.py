@@ -5,6 +5,7 @@ from app.api.v1.deps import get_current_user
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.user import UserResponse
+from app.services.auth import delete_user_and_data
 
 router = APIRouter(tags=["Users & Account"])
 
@@ -25,7 +26,6 @@ def delete_account(
     FR-052: Deletes the user account and all associated sessions,
     check-ins, and reflections in a single cascading operation.
     """
-    db.delete(current_user)
-    db.commit()
+    delete_user_and_data(db, current_user)
     response.delete_cookie(key="access_token")
     return {"message": "Account and all associated data permanently deleted."}
